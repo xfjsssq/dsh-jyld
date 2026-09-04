@@ -17,14 +17,14 @@
 In a DSH installation with the `dsh` command available:
 
 ```powershell
-dsh plugin add https://github.com/xfjsssq/dsh-jyld.git
+dsh plugin --profile web add github:xfjsssq/dsh-jyld
 ```
 
 Restart the DSH web profile after installation. Select **智能路由** in the model picker to enable automatic routing. Existing users can keep a specific model selected and use the plugin's balance panel independently.
 
-The repository is intentionally installable directly from GitHub. The committed `lib/` directory is the runtime build, and the client bundle is already included.
+The repository is intentionally installable directly from GitHub. The committed `lib/` directory is the runtime build, the client bundle is already included, and all runtime dependencies (including the `@deepseek-ai/*` host packages from npm) are installed automatically by the `dsh plugin add` command.
 
-**Installing as an AI agent?** Read [AGENTS.md](./AGENTS.md) first — it contains the exact install steps, a verification checklist, and the troubleshooting map (in particular: do not run `npm install`, and never fetch `@deepseek-ai/*` from the public registry; those packages are injected by the DSH host at runtime).
+**Installing as an AI agent?** Read [AGENTS.md](./AGENTS.md) first — it contains the exact install steps, a four-point verification checklist, and a troubleshooting map.
 
 ## Configure credentials
 
