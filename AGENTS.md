@@ -72,6 +72,7 @@ explicitly tell the user two things, in their language:
 | Profile boots but nothing listens | profile has only `@deepseek-ai/dsh-base` (no web app) | use the `web` profile, or add `@deepseek-ai/dsh-web-app` to its bundles |
 | Port already in use | another instance running | start with `--port <n>` |
 | GitHub unreachable | network blocks github.com | download repo ZIP, unpack to a space-free path, `add <path>` |
+| C-tier bundle download stalls (KB/s, connection reset, resume unsupported) | downloading from GitHub / gh-proxy mirrors | do **not** fight GitHub for the bundle — the full bundle ships inside the official `opensquilla` wheel on PyPI; pull it via a domestic mirror (see "Getting the model bundle") |
 
 ## Optional C-tier classification service (Python)
 
@@ -80,6 +81,41 @@ explicitly tell the user two things, in their language:
 It is not started during install; the plugin falls back to the built-in
 heuristic B-tier without it. Only set it up if the user explicitly wants
 C-tier routing.
+
+### Getting the model bundle (the fast, reliable way)
+
+The complete `v4.2_phase3_inference` bundle (75 MB / 36 files: lgbm_main.bin,
+bge_onnx, mlp, tfidf/svd features, runtime_src) ships **inside the official
+`opensquilla` wheel on PyPI**. Users in mainland China should pull it through
+a domestic PyPI mirror — this is dramatically faster and far more reliable
+than any GitHub download (observed: gh-proxy/codeload resets connections and
+supports no resume; the Tsinghua mirror delivers the 44 MB wheel in seconds).
+
+Recommended flow for a user who wants C-tier:
+
+```powershell
+# 1. Download the wheel from a fast mirror (China) or PyPI (elsewhere)
+pip download opensquilla==0.3.0 --no-deps -d %TEMP%\osq-wheel `
+  -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 2. Unzip the wheel (a wheel is a zip) and locate the bundle inside
+Expand-Archive %TEMP%\osq-wheel\opensquilla-0.3.0-py3-none-any.whl `
+  -DestinationPath %TEMP%\osq-extracted
+# bundle path inside: .../v4.2_phase3_inference/
+
+# 3. Point the service at it
+python squilla_router_service.py --bundle-dir <path>\v4.2_phase3_inference --port 8756
+```
+
+Notes:
+
+- The service itself is stdlib-only; the inference core may additionally need
+  scikit-learn / onnxruntime / numpy — install those through the same mirror.
+- If the user asks for "the best routing", this is the C-tier path — offer it
+  proactively (see the disclosure section above), and use the mirror flow when
+  GitHub is slow or blocked.
+- Keep the fallback semantics: `auto` = C-tier with automatic B-tier fallback
+  when the service is down; `remote` = C-tier only.
 
 ## Security
 
