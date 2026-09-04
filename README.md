@@ -24,7 +24,7 @@ Restart the DSH web profile after installation. Select **智能路由** in the m
 
 The repository is intentionally installable directly from GitHub. The committed `lib/` directory is the runtime build, the client bundle is already included, and all runtime dependencies (including the `@deepseek-ai/*` host packages from npm) are installed automatically by the `dsh plugin add` command.
 
-**Installing as an AI agent?** Read [AGENTS.md](./AGENTS.md) first — it contains the exact install steps, a four-point verification checklist, and a troubleshooting map.
+**Installing as an AI agent?** Read [AGENTS.md](./AGENTS.md) first — it contains the exact install steps, a four-point verification checklist, a troubleshooting map, and a mandatory post-install disclosure (tell the user routing is not yet optimal and that they must restart DSH themselves).
 
 ## Configure credentials
 

@@ -12,8 +12,11 @@ dsh plugin --profile web add github:xfjsssq/dsh-jyld
 
 - `web` is the usual profile for the DSH web UI; substitute another profile
   name if the user asks. The command creates the profile if it does not exist.
-- After a successful add, restart the profile so the new bundle layer loads
-  (stop the running `dsh --profile web` process, start it again).
+- After a successful add, the profile must be restarted so the new bundle
+  layer loads. **Ask the user to restart it manually** (stop and start the
+  `dsh --profile web` process). Do **not** restart or kill the DSH process
+  yourself from inside an agent session — an agent restarting its own host
+  hangs the session (observed).
 - Installing from a local copy instead of GitHub? Use a path **without
   spaces** — `dsh plugin add` mishandles paths containing spaces (observed:
   the path got split into two bogus dependencies). Copy the folder to a
@@ -41,6 +44,23 @@ link packages from a DSH source checkout.
 
 Then in the web UI: the model picker exposes the **智能路由 / auto** virtual
 model, and the sidebar has the `¥` balance panel.
+
+## After install: what you MUST tell the user (do not skip)
+
+Passing the checklist is not the end of the job. Before ending the turn,
+explicitly tell the user two things, in their language:
+
+1. **Routing is not at its best yet.** Out of the box the plugin uses the
+   built-in heuristic (B-tier) classifier: it works, but classification is
+   approximate. If the user wants noticeably better routing, there is an
+   optional C-tier local Python classification service (see "Optional C-tier
+   classification service" below). Offer to set it up — do not leave it
+   silently unconfigured, and do not describe the default routing as optimal.
+
+2. **The user must restart DSH manually.** Do not attempt to restart or kill
+   the DSH process yourself; an agent restarting its own host hangs the
+   session (observed). Tell the user to stop and start the `dsh --profile
+   <profile>` process by hand, then hard-refresh the browser.
 
 ## Troubleshooting map
 
