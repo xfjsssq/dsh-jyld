@@ -1,0 +1,56 @@
+{
+  "name": "dsh-opensquilla",
+  "version": "0.1.1",
+  "description": "Intelligent model routing, image-aware history degradation, and TokenRhythm/DeepSeek balance for DeepSeek Harness",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/**/*.js",
+    "python/squilla_router_service.py",
+    "cordis.patch.yml",
+    "NOTICE.md",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm exec tsc -p tsconfig.build.json",
+    "build:client": "node scripts/build-client.mjs",
+    "pack:release": "pnpm run build && pnpm run build:client"
+  },
+  "dependencies": {
+    "eventsource-parser": "^3.1.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/dsh-agent": "*",
+    "@deepseek-ai/dsh-anonymous-user-id": "*",
+    "@deepseek-ai/dsh-attachment": "*",
+    "@deepseek-ai/dsh-credentials": "*",
+    "@deepseek-ai/dsh-launch-environment": "*",
+    "@deepseek-ai/dsh-llm": "*",
+    "@deepseek-ai/dsh-settings": "*",
+    "@deepseek-ai/dsh-system-prompt": "*",
+    "@deepseek-ai/dsh-timeout": "*",
+    "@deepseek-ai/schemastery": "*"
+  }
+}

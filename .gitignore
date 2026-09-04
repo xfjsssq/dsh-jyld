@@ -1,0 +1,45 @@
+node_modules/
+.venv/
+.env
+.env.*
+*.log
+*.tmp
+*.tsbuildinfo
+coverage/
+dev/dsh-home/
+dev/mock-requests.log
+
+# Local DSH state and credentials
+billing.json
+**/billing.json
+.dsh/
+SECRETS-HANDOFF.md
+check-creds.ps1
+
+# Local-only probes and handoff notes
+HANDOFF-*.md
+TASK-*.md
+ALIGNMENT-NOTE.md
+IMPLEMENTATION-PLAN.md
+MEMORY.md
+probe_*.mjs
+e2e_*.mjs
+readzstd.mjs
+probe_transcript.mjs
+quicksort.py
+开发流程记忆.md
+
+# Release repo ships built artifacts only (no dev sources, tests, or build output)
+src/
+tests/
+dist/
+client/
+scripts/
+dev/
+python/__pycache__/
+PLAN.md
+vitest.config.ts
+tsconfig.json
+tsconfig.build.json
+pnpm-lock.yaml
+pnpm-workspace.yaml

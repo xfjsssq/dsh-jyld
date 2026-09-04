@@ -1,0 +1,13 @@
+# The DSH-OpenSquilla bundle patch: inserts the plugin row over the profile
+# root AND points the default agent model at the routed TokenRhythm provider,
+# so routing is active the moment the plugin is installed. Users who want a
+# different default can override `agent-default-model` in their own profile
+# patch / settings (the last layer wins).
+- insert:
+    - id: dsh-opensquilla
+      name: dsh-opensquilla
+
+- id: agent-default-model
+  config:
+    provider: tokenrhythm
+    model: deepseek-v4-pro-0813
