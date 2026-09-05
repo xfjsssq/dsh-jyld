@@ -134,6 +134,28 @@ python -m pip install numpy scikit-learn joblib lightgbm onnxruntime tokenizers 
   -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
+**Where this list comes from** (re-verify after any bundle upgrade, e.g. v4.3):
+
+```powershell
+# Scan ALL imports, including function-body (indented) ones — the three
+# heaviest deps (lightgbm, onnxruntime, tokenizers) are lazy-imported and a
+# line-start-only grep WILL miss them.
+Get-ChildItem <bundle>\runtime_src\src\router -Recurse -Filter *.py |
+  Select-String -Pattern '^\s*(?:import|from)\s+([a-zA-Z_][a-zA-Z0-9_]*)' |
+  ForEach-Object { $_.Matches[0].Groups[1].Value } | Sort-Object -Unique
+# then subtract the stdlib and `src` — what remains is the dependency list
+```
+
+(`sentence_transformers` also appears in the scan, but only on the
+non-ONNX backend path; this bundle uses the ONNX backend, so it is not
+required — confirmed by a working 64–72 ms/classify install without it.)
+
+**Tested version combination** (all-latest as of 2026-09-04, loads the
+v4.2_phase3 pickle/booster artifacts fine): numpy 2.5.2, scikit-learn 1.9.0,
+lightgbm 4.7.0, onnxruntime 1.29.0, joblib 1.6.0, tokenizers 0.23.1,
+pyyaml 6.0.3. If a future major version fails to load the bundle, pin to
+these.
+
 Python 3.11+ recommended. The plugin needs a concrete interpreter path for the
 next step; find it with `(Get-Command python).Source`.
 
