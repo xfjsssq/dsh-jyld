@@ -15,6 +15,9 @@ dsh plugin --profile web add github:xfjsssq/dsh-jyld
 - If the `dsh` command is not on PATH (common when DSH runs from a source
   checkout), call the built CLI directly:
   `node <DSH checkout>\apps\cli\lib\bin.js plugin --profile web add github:xfjsssq/dsh-jyld`.
+- `dsh plugin add` shells out to **pnpm** under the hood; on a bare machine run
+  `npm i -g pnpm` first (the CLI reports a self-explanatory error without it,
+  but installing it up front avoids the detour).
 - After a successful add, the profile must be restarted so the new bundle
   layer loads. **Ask the user to restart it manually** (stop and start the
   `dsh --profile web` process). Do **not** restart or kill the DSH process
@@ -96,6 +99,26 @@ This is the part that costs the most time in a fresh install — do it in this
 order and use mirrors aggressively. The service **needs a real Python +
 third-party runtime**, so do not treat it as stdlib-only.
 
+#### 0. (Bare machine) Install Python 3.12 first
+
+The recipe below assumes a real Python on PATH. A fresh Windows box usually
+has none: `python` is the Microsoft Store alias stub and reports "Python was
+not found; run without arguments to install from the Microsoft Store" — do
+not be misled by it. Install a per-user 3.12 (npmmirror is fast in mainland
+China; use python.org elsewhere):
+
+```powershell
+# 0. (Bare machine) Install Python 3.12 per-user — npmmirror is fast in
+#    mainland China; use python.org elsewhere.
+curl.exe -sL -o "$env:TEMP\py.exe" https://registry.npmmirror.com/-/binary/python/3.12.10/python-3.12.10-amd64.exe
+Start-Process -Wait "$env:TEMP\py.exe" -ArgumentList '/quiet','InstallAllUsers=0','PrependPath=0','Include_launcher=0','TargetDir=C:\Users\<user>\AppData\Local\Programs\Python\Python312'
+```
+
+After installing, confirm the real interpreter (not the Store alias stub) is
+the one that will be used — `(Get-Command python).Source` should point inside
+the TargetDir above; if it still resolves to the alias, use the full TargetDir
+path for `classifierPython` in step 3 below.
+
 #### 1. Get the model bundle (the fast, reliable way)
 
 The complete `v4.2_phase3_inference` bundle (75 MB / 36 files: lgbm_main.bin,
@@ -107,16 +130,16 @@ delivers the wheel in seconds).
 
 ```powershell
 # 1. Download the wheel from a fast mirror (China) or PyPI (elsewhere)
-pip download opensquilla==0.3.0 --no-deps -d %TEMP%\osq-wheel `
+pip download opensquilla==0.3.0 --no-deps -d "$env:TEMP\osq-wheel" `
   -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 2. Unzip the wheel (a wheel is a zip); the bundle lives at this exact path
-Expand-Archive %TEMP%\osq-wheel\opensquilla-0.3.0-py3-none-any.whl `
-  -DestinationPath %TEMP%\osq-extracted
+Expand-Archive "$env:TEMP\osq-wheel\opensquilla-0.3.0-py3-none-any.whl" `
+  -DestinationPath "$env:TEMP\osq-extracted"
 
 # 3. Copy the bundle folder to the classifier bundle dir
-robocopy %TEMP%\osq-extracted\opensquilla\squilla_router\models\v4.2_phase3_inference `
-  %USERPROFILE%\.dsh\opensquilla-router\v4.2_phase3_inference /E
+robocopy "$env:TEMP\osq-extracted\opensquilla\squilla_router\models\v4.2_phase3_inference" `
+  "$env:USERPROFILE\.dsh\opensquilla-router\v4.2_phase3_inference" /E
 ```
 
 #### 2. Install the inference runtime dependencies
