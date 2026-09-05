@@ -79,8 +79,9 @@ explicitly tell the user two things, in their language:
 | GitHub unreachable | network blocks github.com | download repo ZIP, unpack to a space-free path, `add <path>` |
 | C-tier bundle download stalls (KB/s, connection reset, resume unsupported) | downloading from GitHub / gh-proxy mirrors | do **not** fight GitHub for the bundle — the full bundle ships inside the official `opensquilla` wheel on PyPI; pull it via a domestic mirror (see "C-tier setup") |
 | `classifier: FATAL ... No module named 'lightgbm'` (or onnxruntime / sklearn / yaml / numpy) | inference runtime deps not installed | `python -m pip install numpy scikit-learn joblib lightgbm onnxruntime tokenizers pyyaml -i https://pypi.tuna.tsinghua.edu.cn/simple` |
-| `/health` returns `{"ok":true,"available":false,...}` | bundle dir wrong or runtime incomplete | verify `classifierBundleDir` points at the folder containing `runtime_src/` + `version.json`; check service stderr for the missing import |
+| `/health` returns `{"ok":true,"available":false,...}` | bundle dir wrong or runtime incomplete | verify `classifierBundleDir` points at the folder containing `runtime_src/` + `version.json`; see "When the classifier will not come up" below — a one-off manual run is the only way to see the real error (the plugin discards the service's stderr) |
 | PowerShell `Invoke-RestMethod /classify` says "malformed JSON" | PowerShell 5.1 wrote a UTF-8 BOM into the request body | write the JSON body BOM-free (`[System.IO.File]::WriteAllText(..., (New-Object System.Text.UTF8Encoding($false)))`) or use curl.exe |
+| `classifier did not become healthy` (no error detail shown) | the spawned service died at startup and the plugin discards its stderr — missing dep, wrong bundle path, or the port is held by a stale process | one-off manual run of the service to read stderr (see "When the classifier will not come up"); check `netstat -ano \| findstr 8756` for a stale listener |
 
 ## Optional C-tier classification service (Python)
 
@@ -120,9 +121,9 @@ robocopy %TEMP%\osq-extracted\opensquilla\squilla_router\models\v4.2_phase3_infe
 
 #### 2. Install the inference runtime dependencies
 
-The service script imports only the stdlib, but the bundled inference core
-(`runtime_src`) imports these third-party packages — a bare Python will
-`FATAL` without them:
+The service script itself uses only the stdlib plus `yaml` (pyyaml, for
+reading `router.runtime.yaml`); the bundled inference core (`runtime_src`)
+imports these third-party packages — a bare Python will `FATAL` without them:
 
 ```text
 numpy  scikit-learn  joblib  lightgbm  onnxruntime  tokenizers  pyyaml
@@ -152,9 +153,11 @@ required — confirmed by a working 64–72 ms/classify install without it.)
 
 **Tested version combination** (all-latest as of 2026-09-04, loads the
 v4.2_phase3 pickle/booster artifacts fine): numpy 2.5.2, scikit-learn 1.9.0,
-lightgbm 4.7.0, onnxruntime 1.29.0, joblib 1.6.0, tokenizers 0.23.1,
+lightgbm 4.7.0, onnxruntime 1.29.0, joblib 1.6.0, tokenizers 0.23.2,
 pyyaml 6.0.3. If a future major version fails to load the bundle, pin to
-these.
+these. Before swapping in a bundle from a newer wheel (0.4/0.5), read its
+`version.json` first (`version` / `feature_dim` — current bundle is `v4` /
+`390`) and re-run the import scan above; do not swap bundles blindly.
 
 Python 3.11+ recommended. The plugin needs a concrete interpreter path for the
 next step; find it with `(Get-Command python).Source`.
@@ -169,10 +172,12 @@ dsh-opensquilla:
   classifierPython: 'C:\Users\<user>\AppData\Local\Programs\Python\Python312\python.exe'
 ```
 
-Do **not** run the service by hand. The plugin reads these keys and spawns +
-supervises the service automatically when routing runs in `auto` (or `remote`)
-mode. If the service is down, `auto` falls back to B-tier heuristic routing;
-`remote` is C-tier-only.
+Do **not** run the service by hand in normal operation — the plugin reads
+these keys and spawns + supervises it automatically when routing runs in
+`auto` (or `remote`) mode. (One-off manual runs are the diagnostic of record
+when the classifier will not come up — see below.) If the service is down,
+`auto` falls back to B-tier heuristic routing; `remote` degrades instead of
+erroring (see Semantics reminder).
 
 #### 4. Smoke test
 
@@ -184,13 +189,45 @@ Invoke-RestMethod http://127.0.0.1:8756/health
 ```
 
 `available` must be `true`; if `false`, the bundle dir or Python runtime is
-wrong (see the service's own stderr for the exact missing import).
+wrong — get the exact missing import via a one-off manual run (see "When the
+classifier will not come up"; the plugin discards the spawned service's
+stderr, so there is nothing to read in the plugin logs).
 
 #### Semantics reminder
 
 - `auto` = C-tier when the service is healthy, automatic B-tier fallback when
   it is down.
-- `remote` = C-tier only; requests error if the service is unavailable.
+- `remote` = C-tier only; if the service is unavailable, requests still
+  succeed — they fall back to the default tier with `confidence: 0` and
+  `source: v4_unavailable` instead of erroring.
+
+#### When the classifier will not come up (get the real error)
+
+When routing logs `classifier service at ... did not become healthy`, the
+plugin gives no reason: the assembler spawns the service with its stderr
+discarded (`service.stderr?.on('data', () => {})`) and the health probe only
+tests the port. A one-off manual run is the only way to see the real error
+(missing import, wrong bundle path, port already taken):
+
+```powershell
+# Same python + bundle as settings.yaml; use a free port (8757) so you do
+# not collide with the plugin's own spawn attempt. Ctrl+C to stop.
+& '<classifierPython from settings.yaml>' `
+  "$env:USERPROFILE\.dsh\profiles\<profile>\node_modules\dsh-opensquilla\python\squilla_router_service.py" `
+  --bundle-dir '<classifierBundleDir from settings.yaml>' --port 8757
+# The first ModuleNotFoundError / FileNotFoundError / OSError line on stderr
+# is the actual cause.
+```
+
+Two related traps:
+
+- **Stale process holding the port.** A leftover service from a previous run
+  keeps 8756 busy; the fresh spawn cannot bind and dies with its error
+  swallowed — indistinguishable from a missing dependency. Check
+  `netstat -ano | findstr 8756` and kill the stale PID before retrying.
+- **False-positive `/health`.** While a stale process is listening, `/health`
+  can answer `ok` even though it is an old build — confirm the PID behind the
+  listener before trusting the smoke test.
 
 ## Security
 
